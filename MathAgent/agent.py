@@ -1,4 +1,4 @@
-from math_tools import binary_to_decimal, general_response, calculator, decimal_to_binary
+from MathAgent.math_tools import binary_to_decimal, general_response, calculator, decimal_to_binary
 
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain.prompts import PromptTemplate
@@ -26,8 +26,7 @@ class State(TypedDict):
 class MathAgent:
     def __init__(self):
         #TODO: вынести данные в конфиг
-        self.llm = ChatOllama(model="llama3.1", temperature=0.1,
-                         base_url="http://192.168.0.103:11434")
+        self.llm = ChatOllama(model="llama3.1", temperature=0.1)
 
         graph_builder = StateGraph(State)
 
