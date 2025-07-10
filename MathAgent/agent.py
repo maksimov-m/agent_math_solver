@@ -7,11 +7,15 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph.message import add_messages
 from langchain_ollama import ChatOllama
 from langchain.chains import LLMChain
-
 from langgraph.graph import StateGraph, START, END
 
 from typing import Annotated
 from typing_extensions import TypedDict
+
+import logging
+
+logger = logging.getLogger("MathAgent")
+logger.setLevel(logging.DEBUG)
 
 
 #TODO: вынести промпты в отдельный файл
@@ -26,9 +30,11 @@ class State(TypedDict):
 
 
 class MathAgent:
-    def __init__(self):
-        #TODO: вынести данные в конфиг
-        self.llm = ChatOllama(model="llama3.1", temperature=0.1)
+    # TODO: вынести данные в конфиг
+    # TODO: Dependency injection
+    def __init__(self, llm=ChatOllama(model="llama3.1", temperature=0.1)):
+
+        self.llm = llm
 
         graph_builder = StateGraph(State)
 
@@ -42,6 +48,8 @@ class MathAgent:
         graph_builder.add_edge("generate_answer", END)
 
         self.graph = graph_builder.compile()
+
+        logger.info("Graph Agent build success")
 
     def create_steps(self, state: State):
         response_schemas = [
@@ -62,6 +70,7 @@ class MathAgent:
 
         result = chain.invoke({"problem": state['messages'][-1]})
 
+        logger.info("Creating steps success")
         print("ПОЛУЧЕННЫЕ ШАГИ:", result['text']['steps'])
         return {"steps": result['text']['steps'], "problem": state['messages'][-1]}
 
@@ -73,6 +82,7 @@ class MathAgent:
 
         result = self.llm.invoke(prompt)
 
+        logger.info("Reformulation success")
         return result.content
 
     def solve_step(self, prompt, solve_steps, i):
@@ -103,9 +113,10 @@ class MathAgent:
                 solve_steps += f"Шаг {i}: " + f"Функция: {tool_call['name']}, аргументы:{tool_call['args']}" + "\nОтвет: " + str(
                     tool_msg) + "\n\n"
             except Exception as ex:
-                print("Error -", ex)
+                logger.exception("Error use tool")
                 solve_steps += f"Шаг {i}: " + str(prompt) + "\n\n"
 
+        logger.info("Solve step success")
         return solve_steps
 
     def solver(self, state):
@@ -126,6 +137,8 @@ class MathAgent:
             print()
             print("История:", solve_steps)
             i += 1
+
+        logger.info("Solver success")
         return {"messages": [solve_steps]}
 
     def generate_answer(self, state):
@@ -134,5 +147,6 @@ class MathAgent:
 
         result = self.llm.invoke([prompt] + state['messages'])
 
+        logger.info('Generate answer success')
         print("RESULT:", result.content)
         return {"messages": [result.content]}
