@@ -5,15 +5,21 @@ mathagnet = MathAgent()
 
 #########################Gradio Code##########################
 import gradio as gr
+import logging
+
+# logger = logging.getLogger("gradio_logger")
+# logger.setLevel(logging.DEBUG)
+
 
 # TODO:  добавить историю в диалог
 def solve_problem(message, history):
     state = mathagnet.graph.invoke({"messages": message})
+    # logger.info("MathAgent inference success")
 
     answer = state['messages'][-1].content
 
     return answer
 
-demo = gr.ChatInterface(fn=solve_problem, type="messages", title="MathAgent")
-demo.launch()
 
+demo = gr.ChatInterface(fn=solve_problem, type="messages", title="MathAgent")
+demo.launch(server_port=8888)
