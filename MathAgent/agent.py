@@ -1,9 +1,9 @@
 from MathAgent.math_tools import binary_to_decimal, general_response, calculator, decimal_to_binary
 from MathAgent.prompts import prompt_create_steps, prompt_reformulation, prompt_description_tools, prompt_role
+from utils import preprocess_calculator_expression
 
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain.prompts import PromptTemplate
-from langchain_core.messages import SystemMessage
 from langgraph.graph.message import add_messages
 from langchain_ollama import ChatOllama
 from langchain.chains import LLMChain
@@ -14,7 +14,9 @@ from typing_extensions import TypedDict
 
 import logging
 
-logger = logging.getLogger("MathAgent")
+logger = logging.getLogger(__name__)
+c_handler = logging.StreamHandler()
+logger.addHandler(c_handler)
 logger.setLevel(logging.DEBUG)
 
 
@@ -36,6 +38,14 @@ class MathAgent:
 
         self.llm = llm
 
+        self.graph = self.build_agent_graph()
+
+        logger.info("Graph Agent build success")
+
+        self.selected_tool = {"calculator": calculator, "binary_to_decimal": binary_to_decimal,
+                              "decimal_to_binary": decimal_to_binary, "general_response": general_response}
+
+    def build_agent_graph(self):
         graph_builder = StateGraph(State)
 
         graph_builder.add_node("create_steps", self.create_steps)
@@ -47,11 +57,11 @@ class MathAgent:
         graph_builder.add_edge("solver", "generate_answer")
         graph_builder.add_edge("generate_answer", END)
 
-        self.graph = graph_builder.compile()
-
-        logger.info("Graph Agent build success")
+        return graph_builder.compile()
 
     def create_steps(self, state: State):
+        logger.info("Creating steps start...")
+
         response_schemas = [
             ResponseSchema(name="steps", type="List[Dict]", description="Список шагов решения с объяснениями"),
         ]
@@ -75,6 +85,7 @@ class MathAgent:
         return {"steps": result['text']['steps'], "problem": state['messages'][-1]}
 
     def reformulation(self, solve_step: str, curr_task: str, problem: str) -> str:
+        logger.info("Reformulation start...")
 
         prompt = prompt_reformulation.format(**{"problem": problem,
                                                 "solve_step": solve_step,
@@ -86,6 +97,7 @@ class MathAgent:
         return result.content
 
     def solve_step(self, prompt, solve_steps, i):
+        logger.info("Solve step start...")
 
         new_prompt = prompt_description_tools + prompt
         print("Текущая задача:", new_prompt)
@@ -98,18 +110,15 @@ class MathAgent:
 
         for tool_call in result.tool_calls:
             try:
-                selected_tool = {"calculator": calculator, "binary_to_decimal": binary_to_decimal,
-                                 "decimal_to_binary": decimal_to_binary, "general_response": general_response}[
-                    tool_call["name"].lower()]
+                curr_tool = self.selected_tool[tool_call["name"].lower()]
 
                 if tool_call["name"].lower() == 'calculator':
-                    tool_call['args']["expression"] = tool_call['args']["expression"].replace("π", "3.14").replace(
-                        "math.pi", "3.14").replace("math.", "").replace("^", "**").replace("pi", "3.14")
+                    tool_call['args']["expression"] = preprocess_calculator_expression(tool_call['args']["expression"])
                 elif tool_call["name"].lower() == 'general_response':
                     solve_steps += f"Шаг {i}: " + str(prompt) + "\n\n"
                     continue
 
-                tool_msg = selected_tool.invoke(tool_call['args'])
+                tool_msg = curr_tool.invoke(tool_call['args'])
                 solve_steps += f"Шаг {i}: " + f"Функция: {tool_call['name']}, аргументы:{tool_call['args']}" + "\nОтвет: " + str(
                     tool_msg) + "\n\n"
             except Exception as ex:
@@ -120,6 +129,8 @@ class MathAgent:
         return solve_steps
 
     def solver(self, state):
+        logger.info("Solver start work...")
+
         steps = state['steps']
         problem = state['problem']
 
@@ -142,6 +153,7 @@ class MathAgent:
         return {"messages": [solve_steps]}
 
     def generate_answer(self, state):
+        logger.info("Generate answer start...")
 
         prompt = prompt_role.format(**{"problem": state['problem']})
 

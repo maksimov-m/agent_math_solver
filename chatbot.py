@@ -7,14 +7,19 @@ mathagnet = MathAgent()
 import gradio as gr
 import logging
 
-# logger = logging.getLogger("gradio_logger")
-# logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+c_handler = logging.StreamHandler()
+logger.addHandler(c_handler)
+logger.setLevel(logging.DEBUG)
 
 
 # TODO:  добавить историю в диалог
 def solve_problem(message, history):
+    logger.info("Agent workflow start...")
+
     state = mathagnet.graph.invoke({"messages": message})
-    # logger.info("MathAgent inference success")
+
+    logger.info("MathAgent inference success")
 
     answer = state['messages'][-1].content
 
