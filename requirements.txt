@@ -4,3 +4,4 @@ langchain-core==0.3.54
 numexpr==2.8.7
 langgraph==0.3.31
 langchain-ollama==0.3.2
+numpy==1.26.4

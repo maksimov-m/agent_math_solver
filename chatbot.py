@@ -27,4 +27,4 @@ def solve_problem(message, history):
 
 
 demo = gr.ChatInterface(fn=solve_problem, type="messages", title="MathAgent")
-demo.launch(server_port=8888)
+demo.launch()

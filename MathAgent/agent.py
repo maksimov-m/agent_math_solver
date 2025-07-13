@@ -1,6 +1,6 @@
 from MathAgent.math_tools import binary_to_decimal, general_response, calculator, decimal_to_binary
 from MathAgent.prompts import prompt_create_steps, prompt_reformulation, prompt_description_tools, prompt_role
-from utils import preprocess_calculator_expression
+from MathAgent.utils import preprocess_calculator_expression
 
 from langchain.output_parsers import StructuredOutputParser, ResponseSchema
 from langchain.prompts import PromptTemplate
@@ -34,7 +34,7 @@ class State(TypedDict):
 class MathAgent:
     # TODO: вынести данные в конфиг
     # TODO: Dependency injection
-    def __init__(self, llm=ChatOllama(model="llama3.1", temperature=0.1)):
+    def __init__(self, llm=ChatOllama(model="llama3.1", temperature=0.1, base_url="ollama:11434")):
 
         self.llm = llm
 
@@ -96,7 +96,7 @@ class MathAgent:
         logger.info("Reformulation success")
         return result.content
 
-    def solve_step(self, prompt, solve_steps, i):
+    def solve_step(self, prompt: str, solve_steps: str, i: int) -> str:
         logger.info("Solve step start...")
 
         new_prompt = prompt_description_tools + prompt
